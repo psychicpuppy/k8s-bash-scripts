@@ -31,7 +31,7 @@ usage() {
 get_worker_nodes() {
   local master_ip=$1
   log INFO "Querying control plane node $master_ip for worker node IPs..."
-  ssh-keygen -f ~/.ssh/known_hosts -R "$master_ip" 2>/dev/null || true
+  (ssh-keygen -f ~/.ssh/known_hosts -R "$master_ip" 2>/dev/null || true) >&2
 
   local master_node_name
   master_node_name=$(ssh -o StrictHostKeyChecking=no -i "$KEY_PATH" "ubuntu@$master_ip" \
@@ -215,7 +215,7 @@ main() {
     usage
   fi
 
-  BACKUP_DIR="$(pwd)/$BACKUP_NAME"
+  BACKUP_DIR="$$BACKUP_NAME"
   mkdir -p "$BACKUP_DIR"
 
   log INFO "Starting Kubernetes cluster backup for control plane $CONTROL_PLANE_IP"
@@ -251,6 +251,7 @@ main() {
       fi
     ) &
   done
+  log INFO "Waiting for snapshots to complete . . . "
   wait
   log INFO "All snapshot operations completed."
 
@@ -260,6 +261,7 @@ main() {
       IFS=',' read -r ip id name <<< "$node"
       backup_disk "$ip" "$name" &
     done
+    log INFO "Waiting for disk backups to complete . . . "
     wait
   else
     log INFO "Skipping disk backups due to --skip-dd flag"
